@@ -27,7 +27,7 @@ class EcomDev_PHPUnit_Model_Mysql4_Fixture extends Mage_Core_Model_Mysql4_Abstra
     protected function _construct()
     {
         $this->_setResource('ecomdev_phpunit');
-        $this->_resourceModel = NULL;
+        $this->_resourceModel = null;
     }
 
     /**
@@ -39,15 +39,23 @@ class EcomDev_PHPUnit_Model_Mysql4_Fixture extends Mage_Core_Model_Mysql4_Abstra
      */
     public function cleanTable($tableEntity)
     {
-    	try {
-	        $this->_getWriteAdapter()
-	            ->delete($this->getTable($tableEntity));
-    	} catch (Exception $e) {
-    		throw new EcomDev_PHPUnit_Model_Mysql4_Fixture_Exception(
-    			sprintf('Unable to clear records for a table "%s" - "%s"', $tableEntity, $e->getMessage()),
-    			$e
-    		);
-    	}
+        try {
+            $resourceModel = Mage::getResourceModel($tableEntity);
+
+            if ($resourceModel) {
+                $write = $resourceModel->readAdaptor();
+            } else {
+                $write = $this->_getWriteAdapter();
+            }
+
+            $write
+                ->delete($this->getTable($tableEntity));
+        } catch (Exception $e) {
+            throw new EcomDev_PHPUnit_Model_Mysql4_Fixture_Exception(
+                sprintf('Unable to clear records for a table "%s" - "%s"', $tableEntity, $e->getMessage()),
+                $e
+            );
+        }
         return $this;
     }
 
@@ -61,7 +69,16 @@ class EcomDev_PHPUnit_Model_Mysql4_Fixture extends Mage_Core_Model_Mysql4_Abstra
      */
     public function loadTableData($tableEntity, $tableData)
     {
-        $tableColumns = $this->_getWriteAdapter()
+
+        $resourceModel = Mage::getResourceModel($tableEntity);
+
+        if ($resourceModel) {
+            $write = $resourceModel->writeAdaptor();
+        } else {
+            $write = $this->_getWriteAdapter();
+        }
+
+        $tableColumns = $write
             ->describeTable($this->getTable($tableEntity));
 
         $records = array();
@@ -70,21 +87,21 @@ class EcomDev_PHPUnit_Model_Mysql4_Fixture extends Mage_Core_Model_Mysql4_Abstra
         }
 
         try {
-	        $this->_getWriteAdapter()->insertOnDuplicate(
-	            $this->getTable($tableEntity),
-	            $records
-	        );
+            $write->insertOnDuplicate(
+                $this->getTable($tableEntity),
+                $records
+            );
         } catch (Exception $e) {
-        	throw new EcomDev_PHPUnit_Model_Mysql4_Fixture_Exception(
-    			sprintf('Unable to insert/update records for a table "%s" - "%s"', $tableEntity, $e->getMessage()), 
-    			$e
-    		);
+            throw new EcomDev_PHPUnit_Model_Mysql4_Fixture_Exception(
+                sprintf('Unable to insert/update records for a table "%s" - "%s"', $tableEntity, $e->getMessage()),
+                $e
+            );
         }
-        
+
         return $this;
     }
 
-	/**
+    /**
      * Prepares entity table record from array
      *
      * @param array $row
@@ -134,6 +151,6 @@ class EcomDev_PHPUnit_Model_Mysql4_Fixture extends Mage_Core_Model_Mysql4_Abstra
             return serialize($value['serialized']);
         }
 
-        throw new InvalidArgumentException('Unrecognized type for DB column: '.print_r($value, 1));
+        throw new InvalidArgumentException('Unrecognized type for DB column: ' . print_r($value, 1));
     }
 }
